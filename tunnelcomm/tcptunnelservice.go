@@ -64,10 +64,14 @@ func (s *TCPTunnelService) Start() (err error) {
 					switch cmds[i] {
 					// 控制线程链接请求
 					case CTRLCMD.NEWCTRLCONN:
-						s.ctlConn = conn
-						s.clearAllConns()
-						go s.startCmdCtrl()   // 启动控制端
-						go s.startConnCheck() // 启动心跳检测
+						if nil == s.ctlConn {
+							s.ctlConn = conn
+							s.clearAllConns()
+							go s.startCmdCtrl()   // 启动控制端
+							go s.startConnCheck() // 启动心跳检测
+						} else {
+							conn.Close()
+						}
 
 					// 客户端新建链接请求
 					case CTRLCMD.NEWUSERCONN:
@@ -127,6 +131,7 @@ func (s *TCPTunnelService) startCmdCtrl() {
 	errorCount := 0
 	for {
 		if cmds, err := s.readCMD(s.ctlConn); nil == err && len(cmds) > 0 {
+			errorCount = 0
 			for i := 0; i < len(cmds); i++ {
 				switch cmds[i] {
 				case CTRLCMD.COUNTCONN:
@@ -140,16 +145,11 @@ func (s *TCPTunnelService) startCmdCtrl() {
 				}
 			}
 		} else {
-			if nil == err {
-				logs.Infoln("控制指令读取结果为空")
+			logs.Infoln("控制指令读取失败, count=%d, cmd=%s, error=%s", errorCount, cmds, err)
+			if errorCount++; errorCount > 30 {
+				break
 			} else {
-				logs.Infoln("控制指令读取失败, error=%s", err.Error())
-				errorCount++
-				if errorCount >= 10 {
-					break
-				} else {
-					time.Sleep(time.Second)
-				}
+				time.Sleep(time.Second)
 			}
 		}
 	}

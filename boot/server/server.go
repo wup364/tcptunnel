@@ -12,7 +12,7 @@ import (
 func main() {
 	// 获取需要加载的配置名字
 	listenaddr := flag.String("listen", "0.0.0.0:8080", "User access listening address")
-	trunneladdr := flag.String("tunel", "0.0.0.0:8101", "Tunnel working listening address")
+	trunneladdr := flag.String("tunnel", "0.0.0.0:8101", "Tunnel working listening address")
 	isdebug := flag.Bool("debug", false, "Show debugger console logs")
 	flag.Parse()
 
