@@ -63,6 +63,7 @@ func (c *TCPTunnelClient) Start() (err error) {
 		defer conn.Close()
 		// 1. 先清空服务端现有隧道连接缓存
 		if err = CTRLCMD.WriteCMD(conn, CTRLCMD.NEWCTRLCONN); nil == err {
+			logs.Infoln("console is connected, conn=" + conn.LocalAddr().String())
 			errorCount := 0
 			for {
 				// 2. 查询服务端的连接情况

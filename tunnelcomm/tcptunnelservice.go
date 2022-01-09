@@ -58,40 +58,15 @@ func (s *TCPTunnelService) Start() (err error) {
 				s.printInfo("AcceptTCP error: ", err.Error())
 				continue
 			}
-			// 1. 检查是否是控制线程连接
+			// 处理控制命令
 			if cmds, err := s.readCMD(conn); nil == err {
 				for i := 0; i < len(cmds); i++ {
-					switch cmds[i] {
-					// 控制线程链接请求
-					case CTRLCMD.NEWCTRLCONN:
-						if nil == s.ctlConn {
-							s.ctlConn = conn
-							s.clearAllConns()
-							go s.startCmdCtrl()   // 启动控制端
-							go s.startConnCheck() // 启动心跳检测
-						} else {
+					if err = s.handCMD(cmds[i], conn); nil != err {
+						logs.Infoln("HAND-CMD-ERROR: " + err.Error())
+						// 不要关闭控制通道连接
+						if nil == s.ctlConn || s.ctlConn.RemoteAddr().String() != conn.RemoteAddr().String() {
 							conn.Close()
 						}
-
-					// 客户端新建链接请求
-					case CTRLCMD.NEWUSERCONN:
-						if nil != s.ctlConn {
-							s.conns.Put(conn.RemoteAddr().String(), conn)
-						} else {
-							conn.Close()
-							break
-						}
-
-					// 同级连接数量
-					case CTRLCMD.COUNTCONN:
-						if _, err = s.ctlConn.Write([]byte(strconv.Itoa(s.conns.Size()))); nil != err {
-							conn.Close()
-							break
-						}
-
-					// 未知请求
-					default:
-						conn.Close()
 						break
 					}
 				}
@@ -119,6 +94,52 @@ func (s *TCPTunnelService) clearAllConns() {
 	}
 }
 
+// handCMD 处理控制命令, 返回执行异常
+func (s *TCPTunnelService) handCMD(cmd string, conn net.Conn) (err error) {
+	if len(cmd) == 0 || nil == conn {
+		return errors.New("invalid command")
+
+		// 控制通道连接信号
+	} else if cmd == CTRLCMD.NEWCTRLCONN {
+		if nil != s.ctlConn {
+			return errors.New("invalid command: the control channel cannot be connected repeatedly")
+		}
+		s.ctlConn = conn
+		s.clearAllConns()
+		go s.startCmdCtrl()   // 启动控制端
+		go s.startConnCheck() // 启动心跳检测
+		logs.Infoln("console is connected, conn=" + conn.RemoteAddr().String())
+
+		// 新隧道链接信号
+	} else if cmd == CTRLCMD.NEWUSERCONN {
+		if nil == s.ctlConn {
+			return errors.New("invalid command: waiting for control channel connection")
+		}
+		if s.ctlConn.RemoteAddr().String() == conn.RemoteAddr().String() {
+			return errors.New("invalid command: cannot use control channel as tunnel")
+		}
+		s.conns.PutX(conn.RemoteAddr().String(), conn)
+
+		// 统计隧道连接数量
+	} else if cmd == CTRLCMD.COUNTCONN {
+		if nil == s.ctlConn {
+			return errors.New("invalid command: waiting for control channel connection")
+		}
+		if s.ctlConn.RemoteAddr().String() != conn.RemoteAddr().String() {
+			return errors.New("invalid command: insufficient permissions, the current connection is not a control channel")
+		}
+		if err = conn.SetWriteDeadline(time.Now().Add(CMDWTIMEOUT)); nil == err {
+			_, err = conn.Write([]byte(strconv.Itoa(s.conns.Size())))
+		}
+
+		// 无效命令
+	} else {
+		err = errors.New("invalid command")
+	}
+
+	return err
+}
+
 // startCmdCtrl 启动命令控制端
 func (s *TCPTunnelService) startCmdCtrl() {
 	defer func() {
@@ -133,24 +154,17 @@ func (s *TCPTunnelService) startCmdCtrl() {
 		if cmds, err := s.readCMD(s.ctlConn); nil == err && len(cmds) > 0 {
 			errorCount = 0
 			for i := 0; i < len(cmds); i++ {
-				switch cmds[i] {
-				case CTRLCMD.COUNTCONN:
-					_, err = s.ctlConn.Write([]byte(strconv.Itoa(s.conns.Size())))
-				default:
-					_, err = s.ctlConn.Write([]byte("401: cmd not support!"))
-				}
-				if nil != err {
-					logs.Errorf("指令处理结果写入异常, err=%s", err.Error())
-					return
+				if err = s.handCMD(cmds[i], s.ctlConn); nil != err {
+					logs.Infoln("HAND-CMD-ERROR: " + err.Error())
 				}
 			}
 		} else {
-			logs.Infoln("控制指令读取失败, count=%d, cmd=%s, error=%s", errorCount, cmds, err)
-			if errorCount++; errorCount > 30 {
-				break
-			} else {
+			logs.Infoln("控制指令读取失败, cmd=%s, error=%s, count=%d", errorCount, cmds, err)
+			if errorCount++; errorCount <= 30 {
 				time.Sleep(time.Second)
+				continue
 			}
+			break
 		}
 	}
 }
