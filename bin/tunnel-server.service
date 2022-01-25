@@ -1,9 +1,0 @@
-#!/bin/bash
-# chkconfig: 2345 20  05
-# description: tunnel-server    
-# file: /etc/init.d/tunnel-server
-
-cd /opt/tunnel-server
-# 这里的参数需要自己改一下
-./tunnel-server --listen=0.0.0.0:8080 --tunnel=0.0.0:8101 &
-#/opt/tunnel-server/tunnel-server

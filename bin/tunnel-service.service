@@ -1,0 +1,12 @@
+#!/bin/bash
+# chkconfig: 2345 20  05
+# description: tunnel-server    
+# file: /etc/init.d/tunnel-server
+
+# CMD: chkconfig --add tunnel-xxx.service
+# CMD: systemctl daemon-reload
+# CMD: systemctl start tunnel-xxx.service
+
+# 根据安装目录和启动参数进行调整, 示例目录: /opt/tunnel-server/tunnel-server
+cd /opt/tunnel-server
+./tunnel-server --listen=0.0.0.0:8080 --tunnel=0.0.0:8101 &
