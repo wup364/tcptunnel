@@ -16,6 +16,7 @@ import (
 	"os"
 	"pakku/utils/logs"
 	"tcptunnel/tunnelcomm"
+	"time"
 )
 
 func main() {
@@ -71,27 +72,31 @@ func startUserService(addr *net.TCPAddr, TCPTunnel *tunnelcomm.TCPTunnelService,
 			}
 			go func() {
 				defer conn4src.Close()
-				// 获取管道连接
-				if conn4dst := TCPTunnel.GetConn(); nil != conn4dst {
-					defer conn4dst.Close()
-					// 交换数据
-					exchange := func(w net.Conn, r net.Conn) chan struct{} {
-						lock := make(chan struct{})
-						go func() {
-							if _, err := tunnelcomm.ExchangeBuffer(w, r, 2048); nil != err {
-								logs.Errorln(err)
-							}
-							close(lock)
-						}()
-						return lock
-					}
-					logs.Debugf("Exchange-Start %s\r\n", conn4dst.RemoteAddr().String())
-					select {
-					case <-exchange(conn4dst, conn4src):
-					case <-exchange(conn4src, conn4dst):
-					}
+				for count := 0; count < 600; count++ {
+					// 获取管道连接
+					if conn4dst := TCPTunnel.GetConn(); nil != conn4dst {
+						defer conn4dst.Close()
+						// 交换数据
+						exchange := func(w net.Conn, r net.Conn) chan struct{} {
+							lock := make(chan struct{})
+							go func() {
+								if _, err := tunnelcomm.ExchangeBuffer(w, r, 2048); nil != err {
+									logs.Errorln(err)
+								}
+								close(lock)
+							}()
+							return lock
+						}
+						logs.Debugf("Exchange-Start %s\r\n", conn4dst.RemoteAddr().String())
+						select {
+						case <-exchange(conn4dst, conn4src):
+						case <-exchange(conn4src, conn4dst):
+						}
 
-					logs.Debugf("Exchange-End %s\r\n", conn4dst.RemoteAddr().String())
+						logs.Debugf("Exchange-End %s\r\n", conn4dst.RemoteAddr().String())
+						break
+					}
+					time.Sleep(time.Millisecond * 100)
 				}
 			}()
 		}
