@@ -13,7 +13,10 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
 	"pakku/utils/logs"
+	"syscall"
 	"tcptunnel/tunnelcomm"
 	"time"
 )
@@ -29,15 +32,27 @@ func main() {
 	// 服务地址
 	fmt.Println("隧道服务地址:", *serveraddr)
 	fmt.Println("本地代理地址:", *proxyaddr)
+	// start
+	go start(*serveraddr, *proxyaddr, *maxTCPConn, *isdebug)
 
-	// 启动本地代理服务
-	if serviceAddr, err := net.ResolveTCPAddr("tcp", *serveraddr); nil == err {
+	// 监听退出
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	logs.Infoln("os singal: ", <-sigs)
+}
+
+// start 启动本地代理服务
+func start(serveraddr, proxyaddr string, maxTCPConn int64, isdebug bool) {
+	if serviceAddr, err := net.ResolveTCPAddr("tcp", serveraddr); nil == err {
 		var dstsvr *net.TCPAddr
-		if dstsvr, err = net.ResolveTCPAddr("tcp", *proxyaddr); nil != err {
-			logs.Panicln(err)
+		if dstsvr, err = net.ResolveTCPAddr("tcp", proxyaddr); nil != err {
+			logs.Errorln(err)
+			time.Sleep(time.Second * 10)
+			go start(serveraddr, proxyaddr, maxTCPConn, isdebug)
+			return
 		}
 		// 初始化客户端
-		TCPTunnelClient := tunnelcomm.NewTCPTunnelClient(serviceAddr, *maxTCPConn, *isdebug)
+		TCPTunnelClient := tunnelcomm.NewTCPTunnelClient(serviceAddr, maxTCPConn, isdebug)
 		// 当收到链接后执行
 		TCPTunnelClient.SetTransportCallback(func(conn4src net.Conn, relase func() error) (err error) {
 			// 连接代理目标服务器
@@ -69,10 +84,11 @@ func main() {
 			if err := TCPTunnelClient.Start(); nil != err {
 				logs.Infof("隧道连接异常,正在重连 %s\r\n", err.Error())
 			}
-			time.Sleep(time.Duration(1) * time.Second)
+			time.Sleep(time.Second)
 		}
 	} else {
-		logs.Panicln(err)
+		logs.Errorln(err)
+		time.Sleep(time.Second * 10)
+		go start(serveraddr, proxyaddr, maxTCPConn, isdebug)
 	}
-
 }

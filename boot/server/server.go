@@ -11,10 +11,11 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"pakku/utils/logs"
+	"syscall"
 	"tcptunnel/tunnelcomm"
 	"time"
 )
@@ -31,32 +32,46 @@ func main() {
 	logs.Infoln("隧道监听地址:", *trunneladdr)
 
 	// 隧道服务启动
-	var TCPTunnelService *tunnelcomm.TCPTunnelService
-	if addr, err := net.ResolveTCPAddr("tcp", *trunneladdr); nil == err {
-		TCPTunnelService = tunnelcomm.NewTCPTunnelService(addr, *isdebug)
-		go func() {
-			if err := TCPTunnelService.Start(); nil != err {
-				logs.Panicln(err)
-				os.Exit(500)
-			}
-		}()
-	} else {
-		logs.Panicln(err)
+	service := make(chan *tunnelcomm.TCPTunnelService, 1)
+	for {
+		if addr, err := net.ResolveTCPAddr("tcp", *trunneladdr); nil == err {
+			go func() {
+				logs.Infoln("TunnelService.Start")
+				TCPTunnelService := tunnelcomm.NewTCPTunnelService(addr, *isdebug)
+				service <- TCPTunnelService
+				if err := TCPTunnelService.Start(); nil != err {
+					logs.Errorln("TunnelService.Start", err)
+					os.Exit(0)
+				}
+			}()
+			break
+		} else {
+			logs.Errorln("TunnelService.Start", err)
+			time.Sleep(time.Second * 10)
+		}
 	}
 
 	// 启动用户侧服务
-	if addr, err := net.ResolveTCPAddr("tcp", *listenaddr); nil == err {
-		if err = startUserService(addr, TCPTunnelService, *isdebug); nil != err {
-			logs.Panicln(err)
-			os.Exit(500)
+	for {
+		if addr, err := net.ResolveTCPAddr("tcp", *listenaddr); nil == err {
+			go func() {
+				logs.Infoln("UserService.Start")
+				if err = startUserService(addr, <-service, *isdebug); nil != err {
+					logs.Errorln("UserService.Start", err)
+					os.Exit(0)
+				}
+			}()
+			break
+		} else {
+			logs.Errorln("UserService.Start", err)
+			time.Sleep(time.Second * 10)
 		}
-	} else {
-		logs.Panicln(err)
 	}
-	logs.Infoln("Ctrl+C退出程序")
-	var sc string
-	fmt.Scan(&sc)
-	fmt.Println(sc)
+
+	// 监听退出
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	logs.Infoln("os singal: ", <-sigs)
 }
 
 // startUserService 启动用户侧服务
