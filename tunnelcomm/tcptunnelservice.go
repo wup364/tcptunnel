@@ -159,7 +159,7 @@ func (s *TCPTunnelService) startCmdCtrl() {
 				}
 			}
 		} else {
-			logs.Infoln("控制指令读取失败, cmd=%s, error=%s, count=%d", errorCount, cmds, err)
+			logs.Infof("控制指令读取失败, cmd=%d, error=%s, count=%s \r\n", errorCount, cmds, err)
 			if errorCount++; errorCount <= 30 {
 				time.Sleep(time.Second)
 				continue

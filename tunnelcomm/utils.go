@@ -47,12 +47,65 @@ func CopyBuffer(dst io.Writer, src io.Reader, buf []byte) (written int64, err er
 	return written, err
 }
 
+// CopyBufferByLimitedSpeed 拷贝数据-带有速率限制
+// limitSpeed 每秒可以传输的数据大小, 单位KB
+func CopyBufferByLimitedSpeed(dst io.Writer, src io.Reader, limitSpeed int64, buf []byte) (written int64, err error) {
+	if limitSpeed <= 0 {
+		return CopyBuffer(dst, src, buf)
+	}
+	if buf != nil && len(buf) == 0 {
+		panic("empty buffer in copyBufferByLimited")
+	}
+	limitSpeed = limitSpeed * 1024
+	startTime := time.Now().Unix()
+	sleepTime := time.Duration(0)
+	for {
+		if nr, er := src.Read(buf); nil == er && nr > 0 {
+			if nw, ew := dst.Write(buf[0:nr]); nil == ew && nw > 0 {
+				if nr != nw {
+					err = io.ErrShortWrite
+					break
+				}
+				written += int64(nw)
+				// 计算拷贝速度, byte/s
+				var nowSpeed int64
+				speedTime := time.Now().Unix() - startTime
+				if speedTime > 0 {
+					nowSpeed = written / speedTime
+				} else {
+					nowSpeed = written
+				}
+				if nowSpeed > limitSpeed {
+					sleepTime++
+				} else if sleepTime > 0 {
+					sleepTime = 0
+				}
+				if sleepTime > 0 {
+					time.Sleep(sleepTime)
+				}
+			} else if ew != nil {
+				if ew != io.EOF {
+					err = ew
+				}
+				break
+			}
+		} else if er != nil {
+			if er != io.EOF {
+				err = er
+			}
+			break
+		}
+	}
+	return written, err
+}
+
 // ExchangeBuffer 交换两个连接的数据, 返回chan
-func ExchangeBuffer(w, r net.Conn, bufSize int) (n int64, err error) {
+func ExchangeBuffer(w, r net.Conn, bufSize, limitSpeed int) (n int64, err error) {
 	// 客户端存在端口复用, 所以不设置超时
 	if err = r.SetReadDeadline(time.Time{}); nil == err {
 		if err = w.SetWriteDeadline(time.Time{}); nil == err {
-			n, err = CopyBuffer(w, r, make([]byte, bufSize))
+			n, err = CopyBufferByLimitedSpeed(w, r, int64(limitSpeed), make([]byte, bufSize))
+
 		}
 	}
 	return n, err

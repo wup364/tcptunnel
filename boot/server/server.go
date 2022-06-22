@@ -24,6 +24,7 @@ func main() {
 	// 获取需要加载的配置名字
 	listenaddr := flag.String("listen", "0.0.0.0:8080", "User access listening address")
 	trunneladdr := flag.String("tunnel", "0.0.0.0:8101", "Tunnel working listening address")
+	limitSpeed := flag.Int("speed", 0, "Network speed limit, default '0' without limit")
 	isdebug := flag.Bool("debug", false, "Show debugger console logs")
 	flag.Parse()
 
@@ -56,7 +57,7 @@ func main() {
 		if addr, err := net.ResolveTCPAddr("tcp", *listenaddr); nil == err {
 			go func() {
 				logs.Infoln("UserService.Start")
-				if err = startUserService(addr, <-service, *isdebug); nil != err {
+				if err = startUserService(addr, <-service, *isdebug, *limitSpeed); nil != err {
 					logs.Errorln("UserService.Start", err)
 					os.Exit(0)
 				}
@@ -75,7 +76,7 @@ func main() {
 }
 
 // startUserService 启动用户侧服务
-func startUserService(addr *net.TCPAddr, TCPTunnel *tunnelcomm.TCPTunnelService, debug bool) (err error) {
+func startUserService(addr *net.TCPAddr, TCPTunnel *tunnelcomm.TCPTunnelService, debug bool, limitSpeed int) (err error) {
 	if listener, err := net.ListenTCP("tcp", addr); nil == err {
 		for {
 			var err error
@@ -95,7 +96,7 @@ func startUserService(addr *net.TCPAddr, TCPTunnel *tunnelcomm.TCPTunnelService,
 						exchange := func(w net.Conn, r net.Conn) chan struct{} {
 							lock := make(chan struct{})
 							go func() {
-								if _, err := tunnelcomm.ExchangeBuffer(w, r, 2048); nil != err {
+								if _, err := tunnelcomm.ExchangeBuffer(w, r, 2048, limitSpeed); nil != err {
 									logs.Errorln(err)
 								}
 								close(lock)

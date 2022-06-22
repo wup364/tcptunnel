@@ -63,7 +63,7 @@ func start(serveraddr, proxyaddr string, maxTCPConn int64, isdebug bool) {
 				exchange := func(w net.Conn, r net.Conn) chan struct{} {
 					lock := make(chan struct{})
 					go func() {
-						if _, err := tunnelcomm.ExchangeBuffer(w, r, 2048); nil != err {
+						if _, err := tunnelcomm.ExchangeBuffer(w, r, 2048, 0); nil != err {
 							logs.Errorln(err)
 						}
 						close(lock)
