@@ -56,8 +56,9 @@ func CopyBufferByLimitedSpeed(dst io.Writer, src io.Reader, limitSpeed int64, bu
 	if buf != nil && len(buf) == 0 {
 		panic("empty buffer in copyBufferByLimited")
 	}
-	limitSpeed = limitSpeed * 1024
-	startTime := time.Now().Unix()
+
+	limitSpeedMS := float64(limitSpeed) * 1024 / 1000
+	startTime := time.Now().UnixMilli()
 	sleepTime := time.Duration(0)
 	for {
 		if nr, er := src.Read(buf); nil == er && nr > 0 {
@@ -67,15 +68,15 @@ func CopyBufferByLimitedSpeed(dst io.Writer, src io.Reader, limitSpeed int64, bu
 					break
 				}
 				written += int64(nw)
-				// 计算拷贝速度, byte/s
-				var nowSpeed int64
-				speedTime := time.Now().Unix() - startTime
+				// 计算拷贝速度, byte/ms
+				var nowSpeed float64
+				speedTime := time.Now().UnixMilli() - startTime
 				if speedTime > 0 {
-					nowSpeed = written / speedTime
+					nowSpeed = float64(written) / float64(speedTime)
 				} else {
-					nowSpeed = written
+					nowSpeed = float64(written)
 				}
-				if nowSpeed > limitSpeed {
+				if nowSpeed > limitSpeedMS {
 					sleepTime++
 				} else if sleepTime > 0 {
 					sleepTime = 0

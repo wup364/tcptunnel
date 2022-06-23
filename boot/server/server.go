@@ -31,6 +31,7 @@ func main() {
 	// 服务地址
 	logs.Infoln("本地监听地址:", *listenaddr)
 	logs.Infoln("隧道监听地址:", *trunneladdr)
+	logs.Infoln("速率限制KB/S:", *limitSpeed)
 
 	// 隧道服务启动
 	service := make(chan *tunnelcomm.TCPTunnelService, 1)
