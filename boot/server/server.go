@@ -30,6 +30,8 @@ func main() {
 
 	if *isdebug {
 		logs.SetLoggerLevel(logs.DEBUG)
+	} else {
+		logs.SetLoggerLevel(logs.INFO)
 	}
 
 	// 服务地址
