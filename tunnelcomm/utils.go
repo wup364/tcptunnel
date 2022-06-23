@@ -13,6 +13,7 @@ import (
 	"io"
 	"net"
 	"pakku/utils/logs"
+	"pakku/utils/strutil"
 	"time"
 )
 
@@ -57,7 +58,7 @@ func CopyBufferByLimitedSpeed(dst io.Writer, src io.Reader, limitSpeed int64, bu
 	if buf != nil && len(buf) == 0 {
 		panic("empty buffer in copyBufferByLimited")
 	}
-
+	uuid := strutil.GetRandom(16)
 	limitSpeedMS := float64(limitSpeed) * 1024 / 1000
 	startTime := time.Now().UnixMilli()
 	sleepTime := time.Duration(0)
@@ -78,11 +79,11 @@ func CopyBufferByLimitedSpeed(dst io.Writer, src io.Reader, limitSpeed int64, bu
 					nowSpeed = float64(written)
 				}
 				if nowSpeed > limitSpeedMS {
-					sleepTime++
+					sleepTime = time.Duration(nowSpeed/limitSpeedMS) * time.Millisecond
 				} else if sleepTime > 0 {
 					sleepTime = 0
 				}
-				logs.Debugf("limitSpeed=%f, nowSpeed=%f, sleepTime=%v\r\n", limitSpeedMS, nowSpeed, sleepTime)
+				logs.Debugf("uuid[%s] limitSpeed=%f, nowSpeed=%f, sleepTime=%v\r\n", uuid, limitSpeedMS, nowSpeed, sleepTime)
 				if sleepTime > 0 {
 					time.Sleep(sleepTime)
 				}
