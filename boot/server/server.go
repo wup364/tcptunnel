@@ -28,6 +28,10 @@ func main() {
 	isdebug := flag.Bool("debug", false, "Show debugger console logs")
 	flag.Parse()
 
+	if *isdebug {
+		logs.SetLoggerLevel(logs.DEBUG)
+	}
+
 	// 服务地址
 	logs.Infoln("本地监听地址:", *listenaddr)
 	logs.Infoln("隧道监听地址:", *trunneladdr)

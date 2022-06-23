@@ -12,6 +12,7 @@ package tunnelcomm
 import (
 	"io"
 	"net"
+	"pakku/utils/logs"
 	"time"
 )
 
@@ -81,6 +82,7 @@ func CopyBufferByLimitedSpeed(dst io.Writer, src io.Reader, limitSpeed int64, bu
 				} else if sleepTime > 0 {
 					sleepTime = 0
 				}
+				logs.Debugf("limitSpeed=%f, nowSpeed=%f, sleepTime=%v\r\n", limitSpeedMS, nowSpeed, sleepTime)
 				if sleepTime > 0 {
 					time.Sleep(sleepTime)
 				}
