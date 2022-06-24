@@ -10,12 +10,12 @@
 package tunnelcomm
 
 import (
+	"context"
 	"io"
-	"math"
 	"net"
-	"pakku/utils/logs"
-	"pakku/utils/strutil"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 // CopyBuffer 拷贝数据
@@ -59,10 +59,8 @@ func CopyBufferByLimitedSpeed(dst io.Writer, src io.Reader, limitSpeed int64, bu
 	if buf != nil && len(buf) == 0 {
 		panic("empty buffer in copyBufferByLimited")
 	}
-	uuid := strutil.GetRandom(16)
-	limitSpeedMS := float64(limitSpeed) * 1024 / 1000
-	startTime := time.Now().UnixMilli()
-	sleepTime := time.Duration(0)
+	ctx := context.Background()
+	limiter := rate.NewLimiter(rate.Limit(limitSpeed*1024), int(limitSpeed)*1024)
 	for {
 		if nr, er := src.Read(buf); nil == er && nr > 0 {
 			if nw, ew := dst.Write(buf[0:nr]); nil == ew && nw > 0 {
@@ -71,22 +69,8 @@ func CopyBufferByLimitedSpeed(dst io.Writer, src io.Reader, limitSpeed int64, bu
 					break
 				}
 				written += int64(nw)
-				// 计算拷贝速度, byte/ms
-				var nowSpeed float64
-				speedTime := time.Now().UnixMilli() - startTime
-				if speedTime > 0 {
-					nowSpeed = float64(written) / float64(speedTime)
-				} else {
-					nowSpeed = float64(written)
-				}
-				if nowSpeed > limitSpeedMS {
-					sleepTime = time.Duration(math.Ceil(nowSpeed/limitSpeedMS)) * time.Millisecond
-				} else if sleepTime > 0 {
-					sleepTime = 0
-				}
-				logs.Debugf("uuid[%s] limitSpeed=%f, nowSpeed=%f, sleepTime=%v\r\n", uuid, limitSpeedMS, nowSpeed, sleepTime)
-				if sleepTime > 0 {
-					time.Sleep(sleepTime)
+				if err = limiter.WaitN(ctx, nw); nil != err {
+					return
 				}
 			} else if ew != nil {
 				if ew != io.EOF {
