@@ -14,13 +14,14 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"pakku/utils/logs"
-	"pakku/utils/strutil"
-	"pakku/utils/upool"
-	"pakku/utils/utypes"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/wup364/pakku/utils/logs"
+	"github.com/wup364/pakku/utils/strutil"
+	"github.com/wup364/pakku/utils/upool"
+	"github.com/wup364/pakku/utils/utypes"
 )
 
 // TCPTunnelService 实例化TCP隧道服务端

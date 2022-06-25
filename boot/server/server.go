@@ -14,10 +14,11 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"pakku/utils/logs"
 	"syscall"
 	"tcptunnel/tunnelcomm"
 	"time"
+
+	"github.com/wup364/pakku/utils/logs"
 )
 
 func main() {

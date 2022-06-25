@@ -12,11 +12,12 @@ package tunnelcomm
 import (
 	"io"
 	"net"
-	"pakku/utils/logs"
-	"pakku/utils/strutil"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/wup364/pakku/utils/logs"
+	"github.com/wup364/pakku/utils/strutil"
 )
 
 // NewTCPTunnelClient 实例化TCP隧道客户端

@@ -10,8 +10,9 @@
 package tunnelcomm
 
 import (
-	"pakku/utils/fileutil"
 	"testing"
+
+	"github.com/wup364/pakku/utils/fileutil"
 )
 
 func TestCopyBuffer(t *testing.T) {
