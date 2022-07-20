@@ -10,6 +10,7 @@
 package tunnelcomm
 
 import (
+	"errors"
 	"io"
 	"net"
 	"strconv"
@@ -126,7 +127,7 @@ func (c *TCPTunnelClient) handConn(conn net.Conn) {
 						err = c.dataExchangeFunc(conn, func() (err error) {
 							// 用过的CONN还是回收利用
 							// return c.writeCMD(conn, CTRLCMD.RESETCONN)
-							return nil
+							return errors.New("break")
 						})
 						if nil == err {
 							continue
