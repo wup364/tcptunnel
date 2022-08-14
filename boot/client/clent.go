@@ -59,7 +59,7 @@ func start(serveraddr, proxyaddr string, maxTCPConn int64, isdebug bool) {
 			// 连接代理目标服务器
 			if conn4dst, err := net.DialTCP("tcp", nil, dstsvr); nil == err && nil != conn4dst {
 				defer conn4dst.Close()
-				// defer conn4src.Close()
+				defer conn4src.Close()
 				// 交换数据
 				exchange := func(w net.Conn, r net.Conn) chan struct{} {
 					lock := make(chan struct{})
