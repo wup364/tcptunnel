@@ -25,14 +25,14 @@ const (
 
 // ctrlcmd 控制命令
 var CTRLCMD = ctrlcmd{
-	NEWCTRLCONN:    "NEWCTRLC",
-	NEWUSERCONN:    "NEWUSERC",
-	COUNTCONN:      "CTC",
-	CLEARCONN:      "CLSC",
-	RESETCONN:      "RESTC",
-	STARTTRANSPORT: "ST",
-	CONNHEART:      "PING",
-	OK:             "OK",
+	NEWCTRLCONN:    "0",
+	NEWUSERCONN:    "A",
+	COUNTCONN:      "C",
+	CLEARCONN:      "D",
+	RESETCONN:      "R",
+	STARTTRANSPORT: "S",
+	CONNHEART:      "H",
+	OK:             "O",
 }
 
 // ctrlcmd 控制命令
